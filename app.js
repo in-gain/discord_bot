@@ -4,7 +4,7 @@ const URLSearchParams = require("url-search-params");
 const intent = discord.Intents.FLAGS;
 const client = new discord.Client(
   {
-    intents:[intent.GUILDS,intent.GUILD_MEMBERS,intent.GUILD_MESSAGE_REACTIONS,intent.GUILD_SCHEDULED_EVENTS]
+    intents:[intent.GUILDS,intent.GUILD_MEMBERS,intent.GUILD_MESSAGES,intent.GUILD_MESSAGE_REACTIONS,intent.GUILD_SCHEDULED_EVENTS]
   });
 require("dotenv").config();
 
@@ -21,25 +21,28 @@ http
           res.end();
           return;
         }
-        var dataObject = URLSearchParams.parse(data);
-        console.log("post:" + dataObject.type);
-        if (dataObject.type === "wake") {
+        const query = JSON.parse(data);
+        console.log(query)
+        const type = query.type;
+        console.log("post:" + type);
+        if (type === "wake") {
           console.log("Woke up in post");
           res.end();
           return;
         }
-        if (dataObject.type === "askSchedule") {
+        if (type === "askSchedule") {
             console.log("askSchedule")
-            const sendChannel = client.channels.cache.find(e => e.channelId = `806884040178925632`)
+            const voiceChannel = client.channels.cache.find(e => e.channelId = process.env.DISCORD_SEND_CHANNEL);
+            const guild = client.guilds.cache.get(process.env.DISCORD_GUILD_ID);
             //後で環境変数に追加する。
             const eventDetail = {
               name:"テスト",
-              scheduledStartTime:new Date(),
+              scheduledStartTime:'2022-05-25',
               privacyLevel:2, //GUILD_ONLY
               entityType:2, //VOICE
-              channel:sendChannel
+              channel:voiceChannel.channelId
             }
-            const eventManager = new discord.GuildScheduledEventManager(client);
+            const eventManager = new discord.GuildScheduledEventManager(guild);
             eventManager.create(eventDetail);
         }
       }) 
@@ -54,13 +57,13 @@ client.on("ready", () => {
   console.log(`BOTの準備ができました。`);
 });
 
-client.on("message", (message) => {
+client.on("messageCreate", (message) => {
   if (message.author.id === client.user.id) {
     return;
   }
   console.log(message.content);
 
-  if (message.content.includes(`:Craig:, 終了`)) {
+  if (message.content.includes(`<:Craig:969537767585493022>, 終了`)) {
     message.reply(`udonariumのルーム情報は保存した？`);
   }
 });
