@@ -1,0 +1,21 @@
+{
+  "name": "discord_bot",
+  "version": "1.0.0",
+  "description": "gcpによるdiscordBOTの制作",
+  "main": "app.js",
+  "scripts": {
+    "start": "node main.js"
+  },
+  "engines": {
+    "node": "v16.14.2"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.27.2",
+    "discord.js": "^13.6.0",
+    "http": "^0.0.0",
+    "querystring": "^0.2.1",
+    "request": "^2.88.2"
+  }
+}
