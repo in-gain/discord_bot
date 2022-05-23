@@ -1,11 +1,12 @@
 const discord = require("discord.js");
 const http = require("http");
-const queryString = require("querystring");
-const intents = discord.Intents.FLAGS;
+const URLSearchParams = require("url-search-params");
+const intent = discord.Intents.FLAGS;
 const client = new discord.Client(
   {
-    intents:intents.GUILD_SCHEDULED_EVENTS
+    intents:[intent.GUILDS,intent.GUILD_MEMBERS,intent.GUILD_MESSAGE_REACTIONS,intent.GUILD_SCHEDULED_EVENTS]
   });
+require("dotenv").config();
 
 http
   .createServer((req, res) => {
@@ -20,7 +21,7 @@ http
           res.end();
           return;
         }
-        var dataObject = queryString.parse(data);
+        var dataObject = URLSearchParams.parse(data);
         console.log("post:" + dataObject.type);
         if (dataObject.type === "wake") {
           console.log("Woke up in post");
@@ -60,7 +61,6 @@ client.on("message", (message) => {
   console.log(message.content);
 
   if (message.content.includes(`:Craig:, 終了`)) {
-    const option = message.content.split(" ");
     message.reply(`udonariumのルーム情報は保存した？`);
   }
 });
