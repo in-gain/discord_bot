@@ -7,6 +7,7 @@ const client = new discord.Client(
     intents:[intent.GUILDS,intent.GUILD_MEMBERS,intent.GUILD_MESSAGES,intent.GUILD_MESSAGE_REACTIONS,intent.GUILD_SCHEDULED_EVENTS]
   });
 require("dotenv").config();
+const embedMessages = require("./assets/embedMessages");
 
 http
   .createServer((req, res) => {
@@ -22,28 +23,22 @@ http
           return;
         }
         const query = JSON.parse(data);
-        console.log(query)
         const type = query.type;
-        console.log("post:" + type);
-        if (type === "wake") {
-          console.log("Woke up in post");
-          res.end();
-          return;
-        }
         if (type === "askSchedule") {
-            console.log("askSchedule")
-            const voiceChannel = client.channels.cache.find(e => e.channelId = process.env.DISCORD_SEND_CHANNEL);
+            const eventStartDate = query.eventStartDate;
+            const voiceChannel = client.channels.cache.find(e => e.channelId = process.env.DISCORD_VOICE_CHANNEL);
             const guild = client.guilds.cache.get(process.env.DISCORD_GUILD_ID);
-            //後で環境変数に追加する。
             const eventDetail = {
               name:"テスト",
-              scheduledStartTime:'2022-05-25',
+              scheduledStartTime:`${eventStartDate}`,
               privacyLevel:2, //GUILD_ONLY
               entityType:2, //VOICE
               channel:voiceChannel.channelId
             }
             const eventManager = new discord.GuildScheduledEventManager(guild);
             eventManager.create(eventDetail);
+            res.end();
+            return;
         }
       }) 
     } else if (req.method == "GET") {
@@ -58,7 +53,7 @@ client.on("ready", () => {
 });
 
 client.on("messageCreate", (message) => {
-  if (message.author.id === client.user.id) {
+  if (client.user.bot) {
     return;
   }
   console.log(message.content);
@@ -67,6 +62,26 @@ client.on("messageCreate", (message) => {
     message.reply(`udonariumのルーム情報は保存した？`);
   }
 });
+
+client.on("guildScheduledEventCreate",(event) => {
+    event.createInviteURL().then(url => {
+        client.channels.cache.get(process.env.DISCORD_SEND_CHANNEL).send(embedMessages.scheduledMessage(client,"2022/05/25(水)"));
+        client.channels.cache.get(process.env.DISCORD_SEND_CHANNEL).send(url);
+    });
+})
+
+client.on("guildScheduledEventUserAdd",(event,user) =>{
+  console.log("userAdd");
+  console.log(event);
+  console.log(user);
+})
+
+client.on("guildScheduledEventUserRemove",(event,user) =>{
+  console.log("userRemove");
+  console.log(event);
+  console.log(user);
+})
+
 
 if (!process.env.DISCORD_BOT_TOKEN) {
   console.log("discordのBOTトークンを設定してください。");
