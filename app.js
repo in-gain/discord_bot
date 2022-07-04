@@ -1,10 +1,16 @@
+const debugMode = false; //true:テストサーバへ送信 false:本番(TRPGサーバ)へ送信
 const discord = require("discord.js");
 const http = require("http");
-const URLSearchParams = require("url-search-params");
 const intent = discord.Intents.FLAGS;
 const client = new discord.Client(
   {
-    intents:[intent.GUILDS,intent.GUILD_MEMBERS,intent.GUILD_MESSAGES,intent.GUILD_MESSAGE_REACTIONS,intent.GUILD_SCHEDULED_EVENTS]
+    intents:[
+      intent.GUILDS,
+      intent.GUILD_MEMBERS,
+      intent.GUILD_MESSAGES,
+      intent.GUILD_MESSAGE_REACTIONS,
+      intent.GUILD_SCHEDULED_EVENTS
+    ]
   });
 require("dotenv").config();
 const embedMessages = require("./assets/embedMessages");
@@ -25,11 +31,13 @@ http
         const query = JSON.parse(data);
         const type = query.type;
         if (type === "askSchedule") {
-            const eventStartDate = query.eventStartDate;
-            const voiceChannel = client.channels.cache.find(e => e.channelId = process.env.DISCORD_VOICE_CHANNEL);
-            const guild = client.guilds.cache.get(process.env.DISCORD_GUILD_ID);
+            const voiceChannelId = debugMode ? process.env.DISCORD_VOICE_CHANNEL_TEST : process.env.DISCORD_VOICE_CHANNEL;
+            const eventStartDate = new Date(query.eventStartDate);
+            const voiceChannel = client.channels.cache.find(e => e.channelId = voiceChannelId);
+            const guildId = debugMode ? process.env.DISCORD_GUILD_ID_TEST : process.env.DISCORD_GUILD_ID;
+            const guild = client.guilds.cache.get(guildId);
             const eventDetail = {
-              name:"テスト",
+              name:"定例会",
               scheduledStartTime:`${eventStartDate}`,
               privacyLevel:2, //GUILD_ONLY
               entityType:2, //VOICE
@@ -39,6 +47,9 @@ http
             eventManager.create(eventDetail);
             res.end();
             return;
+        }else if(type === "wake"){
+          console.log("wake up discord");
+          res.end();
         }
       }) 
     } else if (req.method == "GET") {
@@ -64,10 +75,15 @@ client.on("messageCreate", (message) => {
 });
 
 client.on("guildScheduledEventCreate",(event) => {
-    event.createInviteURL().then(url => {
-        client.channels.cache.get(process.env.DISCORD_SEND_CHANNEL).send(embedMessages.scheduledMessage(client,"2022/05/25(水)"));
-        client.channels.cache.get(process.env.DISCORD_SEND_CHANNEL).send(url);
-    });
+    if(event.creator?.bot){
+      console.log("event create");
+      const scheduledTime = new Date(event.scheduledStartTimestamp + ((new Date().getTimezoneOffset() + (9 * 60)) * 60 * 1000));
+      const textMessageSendingChannel = debugMode ? process.env.DISCORD_SEND_CHANNEL_TEST : process.env.DISCORD_SEND_CHANNEL
+      event.createInviteURL().then(url => {
+        client.channels.cache.get(textMessageSendingChannel).send(embedMessages.scheduledMessage(client,scheduledTime));
+        client.channels.cache.get(textMessageSendingChannel).send(url);
+      });
+    }
 })
 
 client.on("guildScheduledEventUserAdd",(event,user) =>{
