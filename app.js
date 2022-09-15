@@ -87,12 +87,14 @@ client.on("guildScheduledEventUpdate",(oldEventStatus,newEventStatus) => {
   //定例会用のイベント(このbotが作成したイベント)が終了したときだけ、次の定例会を作成する。
   if(newEventStatus.status === 'COMPLETED' && newEventStatus.id === regularEventId){
     const date = formatDate.convertToTimeZone(new Date(),{timeZone:'Asia/Tokyo'});
-    //水曜定例 -> 金曜定例(2日後)
-    if(date.getDay() === 3){
-      date.setDate(date.getDate() + 2);
+    //水曜定例(水曜日か、木曜日に終了する。金曜日の定例会を作成したい。)
+    if(date.getDay() === 3 || date.getDay() === 4){
+      const fridayDate = (5 - date.getDay() + 7) % 7;
+      date.setDate(date.getDate() + fridayDate);
     }else{
-    //金曜定例 -> 水曜定例(5日後)
-      date.setDate(date.getDate() + 5);
+    //金曜定例 -> 水曜定例を作る
+      const wednesdayDate = (3 - date.getDay() + 7) % 7;
+      date.setDate(date.getDate() + wednesdayDate);
     }
     date.setHours(21,0,0,0);
     console.log(date);
@@ -110,7 +112,7 @@ client.login(process.env.DISCORD_BOT_TOKEN);
 
 const askSchedule = (eventStartDateString) => {
   const voiceChannelId = debugMode ? process.env.DISCORD_VOICE_CHANNEL_TEST : process.env.DISCORD_VOICE_CHANNEL;
-  const voiceChannel = client.channels.cache.find(e => e.channelId = voiceChannelId);
+  const voiceChannel = client.channels.cache.find(e => e.id === voiceChannelId);
   const eventStartDate = new Date(eventStartDateString);
   const guildId = debugMode ? process.env.DISCORD_GUILD_ID_TEST : process.env.DISCORD_GUILD_ID;
   const guild = client.guilds.cache.get(guildId);
@@ -119,7 +121,7 @@ const askSchedule = (eventStartDateString) => {
     scheduledStartTime:`${eventStartDate}`,
     privacyLevel:2, //GUILD_ONLY
     entityType:2, //VOICE
-    channel:voiceChannel.channelId
+    channel:voiceChannel.id
   }
   const eventManager = new discord.GuildScheduledEventManager(guild);
   eventManager.create(eventDetail);
