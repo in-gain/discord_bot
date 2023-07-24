@@ -1,4 +1,4 @@
-const debugMode = true; //true:テストサーバへ送信 false:本番サーバへ送信
+const debugMode = false; //true:テストサーバへ送信 false:本番サーバへ送信
 const discord = require("discord.js");
 const http = require("http");
 const intent = discord.Intents.FLAGS;
@@ -43,7 +43,6 @@ http
 
 client.on("ready", () => {
   console.log(`BOTの準備ができました。`);
-  getControllerScheduledEvent();
 });
 
 client.on("messageCreate", (message) => {
@@ -120,13 +119,6 @@ const askSchedule = (eventStartDateString) => {
   }
   const eventManager = new discord.GuildScheduledEventManager(guild);
   eventManager.create(eventDetail);
-}
-
-const getControllerScheduledEvent = () => {
-  const guildId = debugMode ? process.env.DISCORD_GUILD_ID_TEST : process.env.DISCORD_GUILD_ID;
-  const guild = client.guilds.cache.get(guildId);
-  const eventManager = new discord.GuildScheduledEventManager(guild);
-  eventManager.fetch();
 }
 
 const createNewEvent = () => {
