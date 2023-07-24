@@ -71,18 +71,6 @@ client.on("guildScheduledEventCreate", (event) => {
   }
 })
 
-client.on("guildScheduledEventUserAdd", (event, user) => {
-  console.log("userAdd");
-  console.log(event);
-  console.log(user);
-})
-
-client.on("guildScheduledEventUserRemove", (event, user) => {
-  console.log("userRemove");
-  console.log(event);
-  console.log(user);
-})
-
 client.on("guildScheduledEventUpdate", (oldEventStatus, newEventStatus) => {
   if(newEventStatus.status === 'COMPLETED' && newEventStatus.creatorId === process.env.BOT_ID){
     createNewEvent();
