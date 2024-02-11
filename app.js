@@ -1,15 +1,21 @@
-const debugMode = false; //true:テストサーバへ送信 false:本番サーバへ送信
+const debugMode = true; //true:テストサーバへ送信 false:本番サーバへ送信
 const discord = require("discord.js");
 const http = require("http");
-const intent = discord.Intents.FLAGS;
-const formatDate = require("date-fns-timezone");
+const intent = discord.GatewayIntentBits;
+const Events = discord.Events;
 const client = new discord.Client(
   {
-    intents: [intent.GUILDS, intent.GUILD_MEMBERS, intent.GUILD_MESSAGES, intent.GUILD_MESSAGE_REACTIONS, intent.GUILD_SCHEDULED_EVENTS]
+    intents: [
+      intent.GuildMembers,
+      intent.GuildMessages,
+      intent.GuildMessageReactions,
+      intent.GuildScheduledEvents,
+    ]
   });
+const commands = require("./commands/commands.js");
+const ScheduledEventCreator = require("./ScheduledEventManager.js");
 require("dotenv").config();
-const embedMessages = require("./assets/embedMessages");
-const { env } = require("process");
+const scheduledEventManager = new ScheduledEventCreator(client);
 
 http
   .createServer((req, res) => {
@@ -24,15 +30,6 @@ http
           res.end();
           return;
         }
-        const query = JSON.parse(data);
-        const type = query.type;
-        if (type === "askSchedule") {
-          askSchedule(query.eventStartDate);
-          res.end();
-          return;
-        } else if (type === "wake") {
-          res.end();
-        }
       })
     } else if (req.method == "GET") {
       res.writeHead(200, { "Content-Type": "text/plain" });
@@ -45,41 +42,20 @@ client.on("ready", () => {
   console.log(`BOTの準備ができました。`);
 });
 
-client.on("messageCreate", (message) => {
-  if (client.user.bot) {
-    return;
-  }
-  console.log(message.content);
-
-  if (message.content.includes(`<:Craig:969537767585493022>, 終了`)) {
-    message.reply(`udonariumのルーム情報は保存した？`);
-  }
-});
-
-client.on("guildScheduledEventCreate", (event) => {
-  if (event.creator?.bot) {
-    regularEventId = event.id;
-    const scheduledTime = new Date(event.scheduledStartTimestamp + ((new Date().getTimezoneOffset() + (9 * 60)) * 60 * 1000));
-    const textMessageSendingChannel = debugMode ? process.env.DISCORD_SEND_CHANNEL_TEST : process.env.DISCORD_SEND_CHANNEL
-    const inviteOptions = {
-      maxAge: 60 * 60 * 24 * 7 //1週間分
-    }
-    event.createInviteURL(inviteOptions).then(url => {
-      client.channels.cache.get(textMessageSendingChannel).send(embedMessages.scheduledMessage(client, scheduledTime));
-      client.channels.cache.get(textMessageSendingChannel).send(url);
-    });
-  }
-})
-
 client.on("guildScheduledEventUpdate", (oldEventStatus, newEventStatus) => {
-  if(newEventStatus.status === 'COMPLETED' && newEventStatus.creatorId === process.env.BOT_ID){
-    createNewEvent();
+  if (newEventStatus.status === 'COMPLETED'
+    && newEventStatus.creatorId === process.env.BOT_ID
+    && newEventStatus.name === '定例会'
+  ) {
+    const textChannelId = debugMode ? process.env.DISCORD_SEND_CHANNEL_TEST : process.env.DISCORD_SEND_CHANNEL
+    scheduledEventManager.createNewRegularEvent(newEventStatus.guildId, newEventStatus.channelId, textChannelId);
   }
 })
 
 client.on("guildScheduledEventDelete", (oldEventStatus) => {
-  if(oldEventStatus.creatorId === process.env.BOT_ID){
-    createNewEvent();
+  if (oldEventStatus.creatorId === process.env.BOT_ID && oldEventStatus.name === '定例会') {
+    const textChannelId = debugMode ? process.env.DISCORD_SEND_CHANNEL_TEST : process.env.DISCORD_SEND_CHANNEL
+    scheduledEventManager.createNewRegularEvent(oldEventStatus.guildId, oldEventStatus.channelId, textChannelId);
   }
 })
 
@@ -91,36 +67,33 @@ if (!process.env.DISCORD_BOT_TOKEN) {
 
 client.login(process.env.DISCORD_BOT_TOKEN);
 
-const askSchedule = (eventStartDateString) => {
-  const voiceChannelId = debugMode ? process.env.DISCORD_VOICE_CHANNEL_TEST : process.env.DISCORD_VOICE_CHANNEL;
-  const voiceChannel = client.channels.cache.find(e => e.id === voiceChannelId);
-  const eventStartDate = new Date(eventStartDateString);
-  eventStartDate.setHours(eventStartDate.getHours() - 9)
-  const guildId = debugMode ? process.env.DISCORD_GUILD_ID_TEST : process.env.DISCORD_GUILD_ID;
-  const guild = client.guilds.cache.get(guildId);
-  const eventDetail = {
-    name: "定例会",
-    scheduledStartTime: `${eventStartDate}`,
-    privacyLevel: 2, //GUILD_ONLY
-    entityType: 2, //VOICE
-    channel: voiceChannel.id
-  }
-  const eventManager = new discord.GuildScheduledEventManager(guild);
-  eventManager.create(eventDetail);
-}
+client.on(Events.InteractionCreate, async interaction => {
 
-const createNewEvent = () => {
-  const date = formatDate.convertToTimeZone(new Date(), { timeZone: 'Asia/Tokyo' });
-  //水曜定例(水曜日か、木曜日に終了する。金曜日の定例会を作成したい。)
-  if (date.getDay() === 3 || date.getDay() === 4) {
-    const fridayDate = (5 - date.getDay() + 7) % 7;
-    date.setDate(date.getDate() + fridayDate);
+  if (!interaction.isChatInputCommand()) return;
+
+  const includeCommandName = Object.keys(commands).find(val => val === interaction.commandName);
+
+  if (includeCommandName) {
+    try {
+      await commands[interaction.commandName].execute(interaction)
+        .then(eventData => {
+          scheduledEventManager.createScheduledEvent(eventData.replacedDate, eventData.name, eventData.guildId, eventData.voiceChannelId, eventData.textChannelId);
+          interaction.reply({ content: "イベントの作成が完了しました。", ephemeral: true })
+        })
+        .catch(err => {
+          console.error(err);
+          interaction.reply({ content: err, ephemeral: true }
+          )
+        });
+    } catch (error) {
+      console.error(error);
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp({ content: 'コマンド実行時にエラーになりました。', ephemeral: true });
+      } else {
+        await interaction.reply({ content: 'コマンド実行時にエラーになりました。', ephemeral: true });
+      }
+    }
   } else {
-    //金曜定例 -> 水曜定例を作る
-    const wednesdayDate = (3 - date.getDay() + 7) % 7;
-    date.setDate(date.getDate() + wednesdayDate);
+    console.error(`${interaction.commandName}というコマンドには対応していません。`);
   }
-  date.setHours(21, 0, 0, 0);
-  console.log(date);
-  askSchedule(date.toGMTString());
-}
+});
