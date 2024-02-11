@@ -1,15 +1,15 @@
 
 
-exports.scheduledMessage = (client,date) => {
+exports.scheduledMessage = (client,date,name) => {
     const dayOfWeekArr = ['日','月','火','水','木','金','土'];
     const formattedDate = `${date.getMonth()+1}/${date.getDate()}(${dayOfWeekArr[date.getDay()]})  ${date.getHours()}:00`;
     const ret = {
         embeds: [{
             author: {
-                name: "定例会告知bot",
+                name: "イベント告知BOT",
             },
-            title: `定例会　${formattedDate}`,
-            description:`次回のTRPG定例会は ${formattedDate}です。\n
+            title: `${name}　${formattedDate}`,
+            description:`イベント名：${name}が作成されました。開催日時は ${formattedDate}です。\n
             参加できそうな人は、下記URLから「興味あり」ボタンを押しておいてください。\n`,
             color:0x8dbbff,
             footer:{
