@@ -37,7 +37,6 @@ module.exports = class ScheduledEventManager {
 
     createNewRegularEvent(guildId, voiceChannelId,textChannelId,eventName,eventDate){
         let newEventName;
-        eventDate = formatDate.convertToTimeZone(eventDate, { timeZone: 'Asia/Tokyo' });
         if (eventName.includes('火曜')) {
             const wednesdayDate = (date['wed'] - eventDate.getDay() + 7) % 7;
             newEventName = '水曜定例会'
