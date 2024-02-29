@@ -45,17 +45,17 @@ client.on("ready", () => {
 client.on("guildScheduledEventUpdate", (oldEventStatus, newEventStatus) => {
   if (newEventStatus.status === 'COMPLETED'
     && newEventStatus.creatorId === process.env.BOT_ID
-    && newEventStatus.name === '定例会'
+    && (newEventStatus.name === '火曜定例会' || newEventStatus.name === '水曜定例会')
   ) {
     const textChannelId = debugMode ? process.env.DISCORD_SEND_CHANNEL_TEST : process.env.DISCORD_SEND_CHANNEL
-    scheduledEventManager.createNewRegularEvent(newEventStatus.guildId, newEventStatus.channelId, textChannelId);
+    scheduledEventManager.createNewRegularEvent(newEventStatus.guildId, newEventStatus.channelId, textChannelId, newEventStatus.name, new Date(newEventStatus.scheduledStartTimestamp));
   }
 })
 
 client.on("guildScheduledEventDelete", (oldEventStatus) => {
-  if (oldEventStatus.creatorId === process.env.BOT_ID && oldEventStatus.name === '定例会') {
+  if (oldEventStatus.creatorId === process.env.BOT_ID && (oldEventStatus.name === '火曜定例会' || oldEventStatus.name === '水曜定例会')) {
     const textChannelId = debugMode ? process.env.DISCORD_SEND_CHANNEL_TEST : process.env.DISCORD_SEND_CHANNEL
-    scheduledEventManager.createNewRegularEvent(oldEventStatus.guildId, oldEventStatus.channelId, textChannelId);
+    scheduledEventManager.createNewRegularEvent(oldEventStatus.guildId, oldEventStatus.channelId, textChannelId, oldEventStatus.name, new Date(oldEventStatus.scheduledStartTimestamp));
   }
 })
 

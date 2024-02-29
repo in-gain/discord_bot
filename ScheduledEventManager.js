@@ -4,6 +4,16 @@ const discord = require('discord.js');
 const embedMessages = require('./assets/embedMessages');
 require("dotenv").config();
 
+const date = {
+    mon:1,
+    tue:2,
+    wed:3,
+    thu:4,
+    fri:5,
+    sat:6,
+    sun:7
+}
+
 module.exports = class ScheduledEventManager {
     constructor(client){
         this.client = client;
@@ -11,7 +21,7 @@ module.exports = class ScheduledEventManager {
 
     createScheduledEvent(eventStartDateString, name, guildId, voiceChannelId,textChannelId){
         const voiceChannel = this.client.channels.cache.find(e => e.id === voiceChannelId);
-        const eventStartDate = formatDate.convertToTimeZone(new Date(eventStartDateString), { timeZone: 'Asia/Tokyo' });
+        const eventStartDate = new Date(eventStartDateString);
         const guild = this.client.guilds.cache.get(guildId);
         const eventDetail = {
             "name": `${name}`,
@@ -25,19 +35,20 @@ module.exports = class ScheduledEventManager {
         return true;
     }
 
-    createNewRegularEvent(guildId, voiceChannelId,textChannelId){
-        const date = formatDate.convertToTimeZone(new Date(), { timeZone: 'Asia/Tokyo' });
-        //水曜定例(水曜日か、木曜日に終了する。金曜日の定例会を作成したい。)
-        if (date.getDay() === 3 || date.getDay() === 4) {
-            const fridayDate = (5 - date.getDay() + 7) % 7;
-            date.setDate(date.getDate() + fridayDate);
+    createNewRegularEvent(guildId, voiceChannelId,textChannelId,eventName,eventDate){
+        let newEventName;
+        eventDate = formatDate.convertToTimeZone(eventDate, { timeZone: 'Asia/Tokyo' });
+        if (eventName.includes('火曜')) {
+            const wednesdayDate = (date['wed'] - eventDate.getDay() + 7) % 7;
+            newEventName = '水曜定例会'
+            eventDate.setDate(eventDate.getDate() + wednesdayDate);
         } else {
-            //金曜定例 -> 水曜定例を作る
-            const wednesdayDate = (3 - date.getDay() + 7) % 7;
-            date.setDate(date.getDate() + wednesdayDate);
+            newEventName ='火曜定例会'
+            const tuesdayDate = (date['tue'] - eventDate.getDay() + 7) % 7;
+            eventDate.setDate(eventDate.getDate() + tuesdayDate);
         }
-        date.setHours(21, 0, 0, 0);
-        this.createScheduledEvent(date.toGMTString(),"定例会",guildId, voiceChannelId,textChannelId);
+        eventDate.setHours(21, 0, 0, 0);
+        this.createScheduledEvent(eventDate.toGMTString(),newEventName,guildId, voiceChannelId,textChannelId);
     }
 
     sendEventMessage(event,textMessageSendingChannel){
